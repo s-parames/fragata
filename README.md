@@ -1,8 +1,18 @@
-# FRAGATA
+<h1 align="center">FRAGATA</h1>
 
-<img src="logo.png" alt="FRAGATA logo" width="300" />
+<p align="center">
+  <img src="logo.png" alt="FRAGATA logo" width="300" />
+</p>
 
-**Semantic retrieval of HPC support tickets via hybrid RAG over 20 years of Request Tracker history.**
+<p align="center">
+  <strong>Semantic retrieval of HPC support tickets via hybrid RAG over 20 years of Request Tracker history.</strong>
+</p>
+
+<p align="center">
+  <a href="https://arxiv.org/abs/2604.13721" target="_blank">
+    <img src="https://img.shields.io/badge/arXiv-2604.13721-b31b1b.svg?style=for-the-badge" alt="arXiv paper">
+  </a>
+</p>
 
 This repository contains the implementation described in:
 
