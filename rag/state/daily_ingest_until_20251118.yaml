@@ -1,0 +1,49 @@
+database:
+  host_env: DAILY_DB_HOST
+  port_env: DAILY_DB_PORT
+  user_env: DAILY_DB_USER
+  password_env: DAILY_DB_PASSWORD
+  name_env: DAILY_DB_NAME
+  charset: utf8mb4
+  connect_timeout_sec: 15
+  read_timeout_sec: 7200
+  write_timeout_sec: 7200
+extract:
+  sql: "SELECT\n  t.id AS ticket_id,\n  CONCAT('https://rt.lan.cesga.es/Ticket/Display.html?id=',\
+    \ t.id) AS link,\n  CASE t.Queue\n    WHEN 1 THEN 'general'\n    WHEN 3 THEN\
+    \ 'sistemas'\n    WHEN 5 THEN 'aplicaciones'\n    WHEN 6 THEN 'comunicaciones'\n\
+    \    WHEN 30 THEN 'bigdata'\n    ELSE 'unknown'\n  END AS department,\n\
+    \  t.LastUpdated AS last_updated,\n  t.Status AS status,\n  t.Subject AS subject,\n\
+    \  CONCAT(\n    '[',\n    IFNULL(\n      GROUP_CONCAT(\n        CONCAT(\n    \
+    \      '{\"role\":\"',\n          CASE\n            WHEN tr.Type = 'Comment' THEN\
+    \ 'comment'\n            WHEN LOWER(COALESCE(u.EmailAddress, '')) LIKE '%%cesga%%'\
+    \ THEN 'assistant'\n            ELSE 'user'\n          END,\n          '\",\"\
+    content\":\"',\n          REPLACE(\n            REPLACE(\n              REPLACE(\n\
+    \                REPLACE(COALESCE(am.content_utf8, ''), '\\\\', '\\\\\\\\'),\n\
+    \                '\"',\n                '\\\\\"'\n              ),\n         \
+    \     '\\r',\n              ' '\n            ),\n            '\\n',\n        \
+    \    ' '\n          ),\n          '\"}'\n        )\n        ORDER BY tr.Created\
+    \ ASC, tr.id ASC\n        SEPARATOR ','\n      ),\n      ''\n    ),\n    ']'\n\
+    \  ) AS messages_json\nFROM Tickets t\nLEFT JOIN Transactions tr\n  ON tr.ObjectType\
+    \ = 'RT::Ticket'\n  AND tr.ObjectId = t.id\n  AND tr.Type IN ('Create', 'Correspond',\
+    \ 'Comment')\nLEFT JOIN Users u\n  ON u.id = tr.Creator\nLEFT JOIN (\n  SELECT\n\
+    \    a.TransactionId,\n    MAX(CONVERT(a.Content USING utf8mb4)) AS content_utf8\n\
+    \  FROM Attachments a\n  WHERE a.Content IS NOT NULL\n  GROUP BY a.TransactionId\n\
+    ) am\n  ON am.TransactionId = tr.id\nWHERE t.Status = 'resolved'\n  AND t.Queue\
+    \ IN (1, 3, 5, 6, 30)\n  AND t.LastUpdated > %(lower_bound)s\n  AND t.LastUpdated <=\
+    \ %(upper_bound)s\n      AND t.LastUpdated <= '2025-11-18 13:19:26'\nGROUP BY\
+    \ t.id, t.Queue, t.LastUpdated, t.Status, t.Subject\nORDER BY t.LastUpdated ASC\n"
+  query_params: {}
+  department_field: department
+  last_updated_field: last_updated
+  fetch_size: 500
+  output_prefix: resolved_tickets
+  overlap_hours: 48
+  bootstrap_watermark_utc: '2000-01-01T00:00:00Z'
+schedule:
+  mode: weekly_at
+  interval_minutes: 1440
+  daily_time_local: '11:10:00'
+  weekly_day_of_week: tuesday
+  run_on_startup: false
+  failure_retry_minutes: 30

@@ -1,0 +1,87 @@
+input_path: /mnt/netapp1/Store_CESGA/home/cesga/tec_app2/data/ChatsAplicacions.jsonl
+cleaned_output_path: data/conversations_clean.jsonl
+chunked_output_path: data/output_chunked_v2.jsonl
+ready_output_path: data/dataset_final.jsonl
+
+chunking:
+  min_chars: 400
+  target_chars: 500
+  max_chars: 600
+  overlap_turns: 1
+  min_keep_chars: 120
+
+quality_thresholds:
+  min_in_range_pct: 0.90
+  max_tiny_chunk_pct: 0.02
+  min_signature_reduction_pct: 0.70
+
+input_normalization:
+  passthrough_row_fields:
+    - subject
+    - status
+  passthrough_message_roles:
+    - user
+    - assistant
+    - comment
+
+cleaning:
+  protect_technical_lines: true
+  boilerplate_action: tag
+  comment_role_cleanup:
+    enabled: true
+    closure_phrase_patterns:
+      - "(?i)\\bpecho\\s+este\\s+ticket\\b"
+      - "(?i)\\bcierro\\s+este\\s+ticket\\b"
+      - "(?i)\\bcerramos\\s+este\\s+ticket\\b"
+      - "(?i)\\bte\\s+cierro\\s+este\\s+ticket\\b"
+    signature_line_patterns:
+      - "(?i)^\\s*(?:_{5,}|-{8,})\\s*$"
+    trivial_residual_patterns:
+      - "(?i)^\\s*(?:ok!?|de acuerdo|gracias(?:\\s+por\\s+la\\s+confirmaci[oó]n)?[!.]*)\\s*$"
+      - "(?i)^\\s*(?:saludos,?|un saludo,?|best regards,?|kind regards,?)\\s*$"
+      - "(?i)^\\s*cualquier cosa nos dec[ií]s[,.! ]*$"
+      - "(?i)^\\s*si tienes alguna duda o problema no dudes en contactar con nosotros[,.! ]*$"
+      - "(?i)^\\s*(?:entonces|hola(?:\\s+[A-ZÁÉÍÓÚÑ][\\wÁÉÍÓÚÑáéíóúñ.-]+)?[,.!]*)\\s*$"
+  ticket_phrase_cleanup:
+    enabled: true
+    hard_drop_patterns:
+      - "(?i)This transaction appears to have no content"
+      - "(?i)Output other"
+      - "(?i)This ticket has been created by (?:\\[[A-Z]+\\]|[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}), who has put you as Cc so you can follow it\\."
+      - "(?i)We are sorry if you got notified about this twice\\."
+      - "(?i)To access this ticket, click:\\s*https?://\\S+"
+    ticket_header_patterns:
+      - "(?i)Greetings, This message has been automatically generated in response to the creation of a trouble ticket regarding:"
+      - "(?i)This message has been automatically generated in response to the creation of a trouble ticket regarding:"
+      - "(?i)a summary of which appears below\\."
+      - "(?i)There is no need to reply to this message right now\\."
+      - "(?i)Your ticket has been assigned an ID of \\[[^\\]]+\\]\\."
+      - "(?i)Please include the string:\\s*\\[[^\\]]+\\]\\s*in the subject line of all future correspondence about this issue\\."
+      - "(?i)To do so, you may reply to this message\\."
+      - "(?i)Thank you,"
+    preserve_patterns:
+      - "(?i)regarding:\\s*\"[^\"]+\""
+      - "(?i)subject:\\s*[^\\n]+"
+  boilerplate_line_patterns:
+    - "(?i)^\\s*Requestor:"
+    - "(?i)^\\s*AddRequestor:"
+    - "(?i)^\\s*Owner:"
+    - "(?i)^\\s*Status:"
+    - "(?i)^\\s*CF\\.\\{"
+    - "(?i)This message has been automatically generated in response to the creation of a trouble ticket"
+    - "(?i)There is no need to reply to this message right now"
+    - "(?i)Your ticket has been assigned an ID of"
+    - "(?i)Please include the string:"
+    - "(?i)This transaction appears to have no content"
+    - "(?i)^\\s*>+\\s*"
+    - "(?i)^\\s*\\*\\s*CC\\s+a\\s+correo:"
+    - "(?i)Para mas información entar en el siguiente link"
+  drop_line_patterns:
+    - "^--$"
+    - "^AVISO DE CONFIDENCIALIDAD"
+    - "^This message.*confidential"
+    - "^Please consider the environment"
+    - "^El .* via RT <"
+    - "^On .* via RT <"
+    - "^-----Original Message-----"
+    - "^-----Mensaje original-----"

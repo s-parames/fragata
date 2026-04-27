@@ -1,0 +1,70 @@
+# ============================================================
+# Sensitive data — ticket conversations, datasets
+# ============================================================
+*.jsonl
+# Keep test fixtures (small synthetic samples, not real ticket data)
+!rag/tests/fixtures/*.jsonl
+
+# SSH private keys
+*.pem
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+rag_hpc*
+rag_cesga*
+*.ppk
+
+# Env files with real credentials (DB password, SSH key paths)
+# Commit only *.env.example files
+**/state/*.env
+**/state/*.secret
+**/*.env
+!**/*.env.example
+
+# ============================================================
+# Generated data — large, not source code
+# ============================================================
+rag/RAG/
+rag/data/
+rag/sessions/
+rag/logs/
+rag/reports/
+rag/$TMP/
+
+# ============================================================
+# Runtime state
+# ============================================================
+**/state/*.lock
+**/state/*.pid
+**/state/last_success_ts.txt
+
+# ============================================================
+# Python artifacts
+# ============================================================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ============================================================
+# Claude Code internals
+# ============================================================
+.agent/
+.agents/
+.backup_*/
+skills-lock.json
+
+# ============================================================
+# Backup and temp files
+# ============================================================
+*.bak
+*.bak_*
+*.swp
+*.swo
+*.tmp
+*.log

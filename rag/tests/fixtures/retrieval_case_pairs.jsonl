@@ -1,0 +1,4 @@
+{"query":"MOLPRO","expected_ticket_ids":[51853,52810,41731,10428],"case_group":"molpro"}
+{"query":"molpro","expected_ticket_ids":[51853,52810,41731,10428],"case_group":"molpro"}
+{"query":"Instalación Molpro","expected_ticket_ids":[51853,10428,7143],"case_group":"molpro_install"}
+{"query":"instalación molpro","expected_ticket_ids":[51853,10428,7143],"case_group":"molpro_install"}

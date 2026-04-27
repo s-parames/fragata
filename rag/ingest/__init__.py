@@ -1,0 +1,70 @@
+from .contracts import (
+    HpcExecutionMetadata,
+    IngestJobResultSummary,
+    IngestJobStatusResponse,
+    IngestSourceType,
+    IngestState,
+    PurgeDepartmentRequest,
+    PdfIngestRequest,
+    RtWeeklyIngestRequest,
+    RepoDocsDocKind,
+    RepoDocsIngestRequest,
+    RepoDocsProvider,
+    RepoDocsUrlClassification,
+    REPO_DOCS_SUPPORT_MATRIX,
+    WebIngestRequest,
+    classify_repo_docs_url,
+    repo_docs_support_matrix,
+)
+from .engine_manager import EngineManager
+from .faiss_incremental import append_delta_to_faiss, append_delta_with_fallback
+from .hpc_executor import (
+    HpcCommandBundle,
+    HpcExecutor,
+    HpcExecutorConfig,
+    HpcResourceSpec,
+    HpcRunResult,
+    build_compute_request_command,
+    build_remote_command,
+    parse_allocation_id,
+    resolve_hpc_ssh_key,
+)
+from .orchestrator import IngestionOrchestrator
+from .runner import IngestionJobRunner
+from .security import validate_public_http_url
+from .storage import IngestionJobStore
+
+__all__ = [
+    "IngestJobResultSummary",
+    "IngestJobStatusResponse",
+    "IngestSourceType",
+    "IngestState",
+    "HpcExecutionMetadata",
+    "HpcExecutor",
+    "HpcExecutorConfig",
+    "HpcResourceSpec",
+    "HpcRunResult",
+    "HpcCommandBundle",
+    "build_compute_request_command",
+    "build_remote_command",
+    "parse_allocation_id",
+    "resolve_hpc_ssh_key",
+    "EngineManager",
+    "append_delta_to_faiss",
+    "append_delta_with_fallback",
+    "IngestionJobStore",
+    "IngestionJobRunner",
+    "IngestionOrchestrator",
+    "PurgeDepartmentRequest",
+    "PdfIngestRequest",
+    "RtWeeklyIngestRequest",
+    "RepoDocsDocKind",
+    "RepoDocsIngestRequest",
+    "RepoDocsProvider",
+    "RepoDocsUrlClassification",
+    "REPO_DOCS_SUPPORT_MATRIX",
+    "WebIngestRequest",
+    "classify_repo_docs_url",
+    "repo_docs_support_matrix",
+    "validate_public_http_url",
+]

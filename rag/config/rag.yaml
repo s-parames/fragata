@@ -1,0 +1,24 @@
+retrieval:
+  dataset_path: data/datasetFinalV2.jsonl
+  embeddings_model: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+  reranker_model: cross-encoder/mmarco-mMiniLMv2-L12-H384-v1
+  faiss_dir: data/index/faiss_v2
+  use_faiss_cache: true
+  semantic_k: 64
+  lexical_k: 40
+  semantic_rescue_k: 24
+  rerank_top_n: 60
+  final_k: 8
+
+fusion:
+  semantic_weight: 0.8
+  lexical_weight: 0.2
+  rrf_k: 60
+
+index_backups:
+  enabled: true
+  keep_last: 1
+
+web_job_cleanup:
+  enabled: true
+  trigger: after_merge

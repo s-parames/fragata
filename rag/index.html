@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Búsqueda semántica de tickets CESGA con RAG: retrieval semántico + léxico, reranking y filtros."
+      data-i18n-content="meta.description"
+    />
+    <meta name="rag-api-base-url" content="" />
+    <title data-i18n="document.title">RAG Ticket Search</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png?v=20260407-2" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/favicon.png?v=20260407-2" />
+    <link rel="shortcut icon" href="/static/favicon.ico?v=20260407-2" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+    <link rel="stylesheet" href="/static/style.css?v=20260409-3" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <div class="hero-top">
+          <div class="hero-brand">
+            <img
+              class="hero-brand-logo"
+              src="/static/logotipo_CESGA_original.svg?v=20260409-3"
+              alt="Logo CESGA"
+              loading="eager"
+              decoding="async"
+            />
+          </div>
+          <div class="lang-switcher">
+            <label for="language-selector" data-i18n="language.label">Language</label>
+            <div class="custom-select" id="language-select">
+              <button id="language-trigger" class="custom-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                English
+              </button>
+              <ul id="language-menu" class="custom-select-menu" role="listbox" tabindex="-1">
+                <li class="custom-select-option" role="option" aria-selected="false" data-value="es" data-i18n="language.option.es">Castellano</li>
+                <li class="custom-select-option" role="option" aria-selected="false" data-value="gl" data-i18n="language.option.gl">Galego</li>
+                <li class="custom-select-option selected" role="option" aria-selected="true" data-value="en" data-i18n="language.option.en">English</li>
+              </ul>
+              <input id="language-selector" name="language" type="hidden" value="en" />
+            </div>
+          </div>
+        </div>
+        <h1 data-i18n="hero.title">RAG Ticket Search</h1>
+        <p class="subtitle" data-i18n="hero.subtitle">Search CESGA tickets with semantic + lexical retrieval, reranking, date filter and department filter.</p>
+      </header>
+
+      <section class="layout">
+        <aside class="panel panel-form">
+          <form id="search-form">
+            <label for="query" data-i18n="form.queryLabel">Query</label>
+            <textarea id="query" name="query" rows="5" data-i18n-placeholder="form.queryPlaceholder" placeholder="Optional for date-only mode. Example: cannot compile TDEP with gfortran -fpp -qopenmp"></textarea>
+
+            <div class="controls">
+              <div class="field">
+                <label for="department" data-i18n="form.departmentLabel">Department</label>
+                <div class="custom-select" id="department-select">
+                  <button id="department-trigger" class="custom-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                    All
+                  </button>
+                  <ul id="department-menu" class="custom-select-menu" role="listbox" tabindex="-1">
+                    <li class="custom-select-option selected" role="option" aria-selected="true" data-value="all" data-i18n="department.option.all">All</li>
+                  </ul>
+                  <input id="department" name="department" type="hidden" value="all" />
+                </div>
+              </div>
+              <div class="field">
+                <label for="k" data-i18n="form.topKLabel">Top K (0 = all in date-only mode)</label>
+                <input id="k" name="k" type="number" min="0" max="20" value="8" />
+              </div>
+              <div class="field">
+                <label for="date-from" data-i18n="form.dateFromLabel">From</label>
+                <div class="date-input-wrap">
+                  <input id="date-from" name="date_from" type="date" autocomplete="off" data-i18n-placeholder="form.noDateSelected" placeholder="No date selected" />
+                </div>
+              </div>
+              <div class="field">
+                <label for="date-to" data-i18n="form.dateToLabel">To</label>
+                <div class="date-input-wrap">
+                  <input id="date-to" name="date_to" type="date" autocomplete="off" data-i18n-placeholder="form.noDateSelected" placeholder="No date selected" />
+                </div>
+              </div>
+            </div>
+            <div class="date-tools">
+              <button id="clear-dates-btn" type="button" class="btn-subtle" data-i18n="form.clearDates">Clear dates</button>
+            </div>
+            <div class="actions">
+              <button id="search-btn" type="submit" data-i18n="form.search">Search</button>
+              <button id="clear-btn" type="button" data-i18n="form.clear">Clear</button>
+            </div>
+          </form>
+
+          <details id="admin-tools-disclosure" class="admin-tools">
+            <summary class="admin-tools-summary">
+              <span class="admin-tools-summary-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 7h16"></path>
+                  <path d="M7 12h10"></path>
+                  <path d="M10 17h4"></path>
+                </svg>
+              </span>
+              <span class="admin-tools-summary-copy">
+                <span class="admin-tools-summary-kicker" data-i18n="admin.kicker">Knowledge ops</span>
+                <span class="admin-tools-summary-title" data-i18n="admin.toggle">Add new files and manage data</span>
+              </span>
+              <span class="admin-tools-summary-chevron" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <polyline points="19 12 12 19 5 12"></polyline>
+                </svg>
+              </span>
+            </summary>
+
+            <div class="admin-tools-body">
+              <div class="admin-tools-head">
+                <div>
+                  <h2 class="admin-tools-title" data-i18n="admin.title">Knowledge intake</h2>
+                  <p class="admin-tools-subtitle" data-i18n="admin.subtitle">Ingestion, purge, and catalog access are hidden here until you open this section.</p>
+                </div>
+                <button id="admin-open-catalog-btn" type="button" class="btn-subtle admin-tools-catalog-btn" data-i18n="admin.openCatalog">Open catalog</button>
+              </div>
+
+              <section class="ingest-panel" aria-labelledby="ingest-title">
+                <div class="ingest-header">
+                  <h2 id="ingest-title" data-i18n="ingest.title">Ingestion</h2>
+                  <p class="ingest-subtitle" data-i18n="ingest.subtitle">Submit website, repository docs, or PDF jobs and track processing.</p>
+                </div>
+                <form id="ingest-form">
+                  <fieldset class="ingest-source-group">
+                    <legend data-i18n="ingest.sourceTypeLabel">Source type</legend>
+                    <label class="source-option" for="ingest-source-web">
+                      <input id="ingest-source-web" type="radio" name="ingest_source_type" value="web" checked />
+                      <span data-i18n="ingest.sourceType.web">Website URL</span>
+                    </label>
+                    <label class="source-option" for="ingest-source-pdf">
+                      <input id="ingest-source-pdf" type="radio" name="ingest_source_type" value="pdf" />
+                      <span data-i18n="ingest.sourceType.pdf">PDF upload</span>
+                    </label>
+                    <label class="source-option" for="ingest-source-repo-docs">
+                      <input id="ingest-source-repo-docs" type="radio" name="ingest_source_type" value="repo_docs" />
+                      <span data-i18n="ingest.sourceType.repoDocs">Repo docs URL</span>
+                    </label>
+                  </fieldset>
+
+                  <div class="controls ingest-controls">
+                    <div class="field">
+                      <label for="ingest-department" data-i18n="ingest.departmentLabel">Department</label>
+                      <input
+                        id="ingest-department"
+                        name="department"
+                        type="text"
+                        list="ingest-department-options"
+                        maxlength="64"
+                        data-i18n-placeholder="ingest.departmentPlaceholder"
+                        placeholder="Type department"
+                        required
+                      />
+                      <datalist id="ingest-department-options">
+                        <option value="aplicaciones"></option>
+                        <option value="sistemas"></option>
+                        <option value="bigdata"></option>
+                        <option value="slurm"></option>
+                      </datalist>
+                    </div>
+                    <div class="field">
+                      <label for="ingest-label" data-i18n="ingest.ingestLabelLabel">Ingest label</label>
+                      <input
+                        id="ingest-label"
+                        name="ingest_label"
+                        type="text"
+                        maxlength="120"
+                        data-i18n-placeholder="ingest.ingestLabelPlaceholder"
+                        placeholder="optional batch label"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="field" id="ingest-web-fields">
+                    <label for="ingest-url" data-i18n="ingest.urlLabel">Website URL</label>
+                    <input
+                      id="ingest-url"
+                      name="url"
+                      type="url"
+                      inputmode="url"
+                      data-i18n-placeholder="ingest.urlPlaceholder"
+                      placeholder="https://example.com/docs/"
+                    />
+                  </div>
+
+                  <div class="field" id="ingest-pdf-fields" hidden>
+                    <label for="ingest-file" data-i18n="ingest.fileLabel">PDF file</label>
+                    <input id="ingest-file" name="file" type="file" accept="application/pdf,.pdf" />
+                  </div>
+
+                  <div class="field" id="ingest-repo-docs-fields" hidden>
+                    <label for="ingest-repo-url" data-i18n="ingest.repoDocsLabel">Repository docs URL</label>
+                    <input
+                      id="ingest-repo-url"
+                      name="repo_docs_url"
+                      type="url"
+                      inputmode="url"
+                      data-i18n-placeholder="ingest.repoDocsPlaceholder"
+                      placeholder="https://github.com/owner/repo/blob/main/README.md"
+                    />
+                    <p class="ingest-helper" data-i18n="ingest.repoDocsHelp">Supports public GitHub/GitLab README.md and wiki URLs.</p>
+                    <div class="ingest-example-list" aria-label="Repository docs examples">
+                      <p class="ingest-example-label" data-i18n="ingest.repoDocsExamples">Examples</p>
+                      <code class="ingest-example-chip">https://github.com/ACEsuit/mace/blob/main/README.md</code>
+                      <code class="ingest-example-chip">https://github.com/trinityrnaseq/trinityrnaseq/wiki</code>
+                    </div>
+                  </div>
+
+                  <div class="actions ingest-actions">
+                    <button id="ingest-submit-btn" type="submit" data-i18n="ingest.submit">Start ingestion</button>
+                  </div>
+                </form>
+
+                <div class="ingest-job-status" id="ingest-job-status" aria-live="polite">
+                  <div class="status" id="ingest-status" data-i18n="ingest.status.idle">No active ingestion job.</div>
+                  <div class="ingest-progress-track" aria-hidden="true">
+                    <div class="ingest-progress-bar" id="ingest-progress-bar"></div>
+                  </div>
+                  <div class="ingest-stage" id="ingest-stage"></div>
+                  <div class="ingest-summary" id="ingest-summary"></div>
+                </div>
+              </section>
+
+              <section class="purge-panel" aria-labelledby="purge-title">
+                <div class="ingest-header">
+                  <h2 id="purge-title" data-i18n="purge.title">Department Purge</h2>
+                  <p class="ingest-subtitle" data-i18n="purge.subtitle">Remove all dataset rows for one department, rebuild index, and reload engine.</p>
+                </div>
+                <form id="purge-form">
+                  <div class="controls ingest-controls">
+                    <div class="field">
+                      <label for="purge-department" data-i18n="purge.departmentLabel">Department</label>
+                      <input
+                        id="purge-department"
+                        name="department"
+                        type="text"
+                        list="purge-department-options"
+                        maxlength="64"
+                        data-i18n-placeholder="purge.departmentPlaceholder"
+                        placeholder="Type department to purge"
+                        required
+                      />
+                      <datalist id="purge-department-options">
+                        <option value="aplicaciones"></option>
+                        <option value="sistemas"></option>
+                        <option value="bigdata"></option>
+                        <option value="slurm"></option>
+                      </datalist>
+                    </div>
+                  </div>
+
+                  <div class="field purge-toggle-row">
+                    <label class="purge-check" for="purge-dry-run">
+                      <input id="purge-dry-run" name="dry_run" type="checkbox" />
+                      <span data-i18n="purge.dryRunLabel">Dry-run (show impact only, do not write dataset)</span>
+                    </label>
+                  </div>
+
+                  <div class="field purge-confirm-box">
+                    <label class="purge-check" for="purge-confirm">
+                      <input id="purge-confirm" name="confirm" type="checkbox" />
+                      <span data-i18n="purge.confirmLabel">I confirm I want to purge this department and rebuild the index.</span>
+                    </label>
+                    <p class="purge-warning" data-i18n="purge.warning">Live mode rewrites the global dataset and replaces FAISS artifacts.</p>
+                  </div>
+
+                  <div class="actions ingest-actions purge-actions">
+                    <button id="purge-submit-btn" type="submit" data-i18n="purge.submit">Start purge</button>
+                  </div>
+                </form>
+
+                <div class="ingest-job-status purge-job-status" id="purge-job-status" aria-live="polite">
+                  <div class="status" id="purge-status" data-i18n="purge.status.idle">No active purge job.</div>
+                  <div class="ingest-progress-track" aria-hidden="true">
+                    <div class="ingest-progress-bar purge-progress-bar" id="purge-progress-bar"></div>
+                  </div>
+                  <div class="ingest-stage" id="purge-stage"></div>
+                  <div class="ingest-summary" id="purge-summary"></div>
+                </div>
+              </section>
+            </div>
+          </details>
+        </aside>
+
+        <section class="panel panel-results">
+          <div id="workspace-tabs" class="workspace-tabs" role="tablist" aria-label="Workspace tabs" hidden>
+            <button
+              id="workspace-tab-search"
+              class="workspace-tab is-active"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              aria-controls="workspace-panel-search"
+              data-tab="search"
+              data-i18n="workspace.tab.search"
+            >
+              Results
+            </button>
+            <button
+              id="workspace-tab-catalog"
+              class="workspace-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="workspace-panel-catalog"
+              data-tab="catalog"
+              data-i18n="workspace.tab.catalog"
+              hidden
+            >
+              Catalog
+            </button>
+          </div>
+
+          <section
+            id="workspace-panel-search"
+            class="workspace-panel results-section"
+            role="tabpanel"
+            aria-labelledby="workspace-tab-search"
+          >
+            <div class="section-heading">
+              <div>
+                <p class="panel-kicker" data-i18n="panel.searchResults">Search Workspace</p>
+                <h2 id="results-title" data-i18n="results.sectionTitle">Results</h2>
+              </div>
+            </div>
+            <div class="status" id="status">Ready</div>
+            <div class="results" id="results"></div>
+            <div class="pagination" id="pagination"></div>
+          </section>
+
+          <section
+            id="workspace-panel-catalog"
+            class="workspace-panel catalog-section"
+            role="tabpanel"
+            aria-labelledby="workspace-tab-catalog"
+            hidden
+          >
+            <div class="catalog-header">
+              <div>
+                <p class="panel-kicker panel-kicker-catalog" data-i18n="panel.inventory">Knowledge Inventory</p>
+                <h2 id="catalog-title" data-i18n="catalog.title">RAG Catalog</h2>
+                <p class="catalog-subtitle" data-i18n="catalog.subtitle">Browse websites, PDFs, and ticket sources already represented in the dataset.</p>
+              </div>
+              <div class="catalog-summary-chip" id="catalog-total-chip">0 sources</div>
+            </div>
+
+            <div class="catalog-filters-shell is-collapsed">
+              <button
+                id="catalog-filters-toggle"
+                class="catalog-filters-toggle"
+                type="button"
+                aria-controls="catalog-filters-panel"
+                aria-expanded="false"
+                aria-label="Open search and filters"
+              >
+                <span class="catalog-filters-toggle-icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="6.5"></circle>
+                    <line x1="16.2" y1="16.2" x2="21" y2="21"></line>
+                  </svg>
+                </span>
+                <span class="catalog-filters-toggle-copy">
+                  <span class="catalog-filters-toggle-kicker" data-i18n="catalog.filters.kicker">Catalog tools</span>
+                  <span id="catalog-filters-toggle-label" data-i18n="catalog.filters.toggle">Search and filters</span>
+                </span>
+              </button>
+
+              <div id="catalog-filters-panel" class="catalog-filters-panel" hidden>
+                <form id="catalog-form" class="catalog-toolbar">
+                  <div class="field catalog-field-wide">
+                    <label for="catalog-q" data-i18n="catalog.form.searchLabel">Search catalog</label>
+                    <input
+                      id="catalog-q"
+                      name="q"
+                      type="search"
+                      maxlength="200"
+                      data-i18n-placeholder="catalog.form.searchPlaceholder"
+                      placeholder="Title, host, source URL, or ingest job"
+                    />
+                  </div>
+
+                  <div class="field">
+                    <label for="catalog-source-type" data-i18n="catalog.form.sourceTypeLabel">Source type</label>
+                    <div class="custom-select catalog-custom-select" id="catalog-source-type-select">
+                      <button
+                        id="catalog-source-type-trigger"
+                        class="custom-select-trigger"
+                        type="button"
+                        aria-haspopup="listbox"
+                        aria-expanded="false"
+                      >
+                        All sources
+                      </button>
+                      <ul id="catalog-source-type-menu" class="custom-select-menu" role="listbox" tabindex="-1">
+                        <li class="custom-select-option selected" role="option" aria-selected="true" data-value="" data-i18n="catalog.type.all">All sources</li>
+                        <li class="custom-select-option" role="option" aria-selected="false" data-value="ticket" data-i18n="catalog.type.ticket">Tickets</li>
+                        <li class="custom-select-option" role="option" aria-selected="false" data-value="web" data-i18n="catalog.type.web">Websites</li>
+                        <li class="custom-select-option" role="option" aria-selected="false" data-value="pdf" data-i18n="catalog.type.pdf">PDFs</li>
+                      </ul>
+                      <input id="catalog-source-type" name="source_type" type="hidden" value="" />
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <label for="catalog-department" data-i18n="catalog.form.departmentLabel">Department</label>
+                    <input
+                      id="catalog-department"
+                      name="department"
+                      type="text"
+                      list="catalog-department-options"
+                      maxlength="64"
+                      data-i18n-placeholder="catalog.form.departmentPlaceholder"
+                      placeholder="All departments or one team"
+                    />
+                    <datalist id="catalog-department-options"></datalist>
+                  </div>
+
+                  <div class="catalog-actions">
+                    <button id="catalog-apply-btn" type="submit" data-i18n="catalog.form.submit">Apply filters</button>
+                    <button id="catalog-reset-btn" type="button" class="btn-subtle" data-i18n="catalog.form.reset">Reset</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <div class="catalog-view-switch" role="tablist" aria-label="Catalog views">
+              <button
+                id="catalog-view-tab-overview"
+                class="catalog-view-tab is-active"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                aria-controls="catalog-view-panel-overview"
+                data-view="overview"
+                data-i18n="catalog.view.overview"
+              >
+                Source list
+              </button>
+              <button
+                id="catalog-view-tab-browse"
+                class="catalog-view-tab"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="catalog-view-panel-browse"
+                data-view="browse"
+                data-i18n="catalog.view.browse"
+              >
+                Source cards
+              </button>
+            </div>
+
+            <section
+              id="catalog-view-panel-overview"
+              class="catalog-view-panel catalog-view-panel-overview"
+              role="tabpanel"
+              aria-labelledby="catalog-view-tab-overview"
+            >
+              <div class="catalog-overview-intro">
+                <p class="catalog-overview-kicker" data-i18n="catalog.overview.kicker">Source map</p>
+                <p class="catalog-overview-copy" data-i18n="catalog.overview.subtitle">Open one source group and inspect the pages, PDFs, or tickets currently inside it.</p>
+              </div>
+              <div class="catalog-overview-grid" id="catalog-overview-results"></div>
+            </section>
+
+            <section
+              id="catalog-view-panel-browse"
+              class="catalog-view-panel catalog-view-panel-browse"
+              role="tabpanel"
+              aria-labelledby="catalog-view-tab-browse"
+              hidden
+            >
+              <div class="status" id="catalog-status">Loading catalog...</div>
+              <div class="catalog-grid" id="catalog-results"></div>
+              <div class="pagination catalog-pagination" id="catalog-pagination"></div>
+            </section>
+          </section>
+        </section>
+      </section>
+      <footer class="site-credit">By Santiago Paramés Estévez y Nicolás Filloy Montesino</footer>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="/static/app.js?v=20260409-3"></script>
+  </body>
+</html>

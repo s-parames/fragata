@@ -1,0 +1,116 @@
+database:
+  host_env: DAILY_DB_HOST
+  port_env: DAILY_DB_PORT
+  user_env: DAILY_DB_USER
+  password_env: DAILY_DB_PASSWORD
+  name_env: DAILY_DB_NAME
+  charset: utf8mb4
+  connect_timeout_sec: 15
+
+extract:
+  # Extraction backend:
+  # - ticket_downloader: uses scriptsDescargaRAG/ticketDownloader.py (RT historical-compatible logic)
+  # - sql: uses extract.sql directly from this config
+  backend: ticket_downloader
+  ticket_downloader_script: scriptsDescargaRAG/ticketDownloader.py
+  # SQL must return at least:
+  # - a timestamp field configured in `last_updated_field`
+  # - a department field configured in `department_field`
+  # - enough content to build onboarding contract (messages/messages_json or question/answer)
+  # Required bind params: %(lower_bound)s and %(upper_bound)s (UTC window).
+  sql: |
+    SELECT
+      t.id AS ticket_id,
+      CONCAT('https://rt.lan.cesga.es/Ticket/Display.html?id=', t.id) AS link,
+      CASE t.Queue
+        WHEN 1 THEN 'general'
+        WHEN 3 THEN 'sistemas'
+        WHEN 5 THEN 'aplicaciones'
+        WHEN 6 THEN 'comunicaciones'
+        WHEN 30 THEN 'bigdata'
+        ELSE 'unknown'
+      END AS department,
+      t.LastUpdated AS last_updated,
+      t.Status AS status,
+      t.Subject AS subject,
+      CONCAT(
+        '[',
+        IFNULL(
+          GROUP_CONCAT(
+            CONCAT(
+              '{"role":"',
+              CASE
+                WHEN tr.Type = 'Comment' THEN 'comment'
+                WHEN LOWER(COALESCE(u.EmailAddress, '')) LIKE '%%cesga%%' THEN 'assistant'
+                ELSE 'user'
+              END,
+              '","content":"',
+              REPLACE(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(COALESCE(am.content_utf8, ''), '\\', '\\\\'),
+                    '"',
+                    '\\"'
+                  ),
+                  '\r',
+                  ' '
+                ),
+                '\n',
+                ' '
+              ),
+              '"}'
+            )
+            ORDER BY tr.Created ASC, tr.id ASC
+            SEPARATOR ','
+          ),
+          ''
+        ),
+        ']'
+      ) AS messages_json
+    FROM Tickets t
+    LEFT JOIN Transactions tr
+      ON tr.ObjectType = 'RT::Ticket'
+      AND tr.ObjectId = t.id
+      AND tr.Type IN ('Create', 'Correspond', 'Comment')
+    LEFT JOIN Users u
+      ON u.id = tr.Creator
+    LEFT JOIN (
+      SELECT
+        a.TransactionId,
+        MAX(CONVERT(a.Content USING utf8mb4)) AS content_utf8
+      FROM Attachments a
+      WHERE a.Content IS NOT NULL
+      GROUP BY a.TransactionId
+    ) am
+      ON am.TransactionId = tr.id
+    WHERE t.Status = 'resolved'
+      AND t.Queue IN (1, 3, 5, 6, 30)
+      AND t.LastUpdated > %(lower_bound)s
+      AND t.LastUpdated <= %(upper_bound)s
+    GROUP BY t.id, t.Queue, t.LastUpdated, t.Status, t.Subject
+    ORDER BY t.LastUpdated ASC
+  query_params: {}
+  department_field: department
+  last_updated_field: last_updated
+  fetch_size: 500
+  output_prefix: resolved_tickets
+  overlap_hours: 48
+  # On first run (without watermark), extraction starts from this timestamp.
+  bootstrap_watermark_utc: "2000-01-01T00:00:00Z"
+
+schedule:
+  # Authoritative scheduler configuration consumed by scripts/run_interval_scheduler.sh.
+  # interval: run every N minutes
+  # daily_at: run once per day at daily_time_local
+  # weekly_at: run once per week at weekly_day_of_week + daily_time_local
+  mode: weekly_at
+  # Used when mode=interval.
+  interval_minutes: 1440
+  # Used when mode=daily_at or mode=weekly_at (server local time).
+  daily_time_local: "02:00:00"
+  # Used when mode=weekly_at. Accepts 0-6 (0=Sunday) or weekday alias.
+  weekly_day_of_week: sunday
+  # If false, scheduler waits for next slot before first run.
+  run_on_startup: false
+  # Retry wait when a run fails.
+  failure_retry_minutes: 30

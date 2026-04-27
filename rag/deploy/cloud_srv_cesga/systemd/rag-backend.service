@@ -1,0 +1,19 @@
+[Unit]
+Description=RAG backend API (FastAPI + Uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=cesgaxuser
+Group=cesgaxuser
+WorkingDirectory=/opt/rag
+EnvironmentFile=-/etc/rag/rag-backend.env
+ExecStart=/opt/rag/RAG/bin/python -m uvicorn app:app --host 0.0.0.0 --port 8010 --proxy-headers
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGINT
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
