@@ -52,7 +52,7 @@ The VM triggers GPU jobs on FT3 over SSH using the `compute` wrapper. After each
 
 ```bash
 # Clone and navigate to the rag component
-git clone <repo-url>
+git clone https://github.com/s-parames/fragata/
 cd rag-project/rag
 
 # Create virtualenv and install dependencies
