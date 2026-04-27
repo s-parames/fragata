@@ -9,10 +9,9 @@
 </p>
 
 <p align="center">
-  <a href="https://arxiv.org/abs/2604.13721">
-    <img src="https://img.shields.io/badge/Paper-arXiv-b31b1b?style=for-the-badge" />
+  <a href="https://arxiv.org/abs/2604.13721" target="_blank">
+    <img src="https://img.shields.io/badge/arXiv-2604.13721-b31b1b.svg?style=for-the-badge" alt="arXiv paper">
   </a>
-  <img src="https://img.shields.io/badge/HPC-Support_Tickets-blue?style=for-the-badge" />
 </p>
 
 This repository contains the implementation described in:
