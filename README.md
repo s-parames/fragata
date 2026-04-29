@@ -92,3 +92,10 @@ See [`rag-frontend-build/README.md`](rag-frontend-build/README.md) and `rag/depl
   primaryClass  = {cs.IR}
 }
 ```
+
+## Acknowledgements
+
+This research project was made possible through the access granted by the Galicia Supercomputing Center (CESGA) to its supercomputing infrastructure. The supercomputer FinisTerrae III and its permanent data storage system have been funded by the NextGeneration EU 2021 Recovery, Transformation and Resilience Plan, ICT2021-006904, and also from the Pluriregional Operational Programme of Spain 2014-2020 of the European Regional Development Fund (ERDF), ICTS-2019-02-CESGA-3, and from the State Programme for the Promotion of Scientific and Technical Research of Excellence of the State Plan for Scientific and Technical Research and Innovation 2013-2016 State subprogramme for scientific and technical infrastructures and equipment of ERDF, CESG15-DE-3114
+
+Additionally, this work was carried out within the framework of the Technological Upgrade Project for the Computing and Data Node of the Galicia Supercomputing Center (CESGA), funded by the Recovery, Transformation and Resilience Plan through the NextGenerationEU instrument of the European Union, within the Strategic Project for Economic Recovery and Transformation in Microelectronics and Semiconductors (PERTE Chip), in accordance with Royal Decree 714/2024.
+
